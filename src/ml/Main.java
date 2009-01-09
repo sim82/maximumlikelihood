@@ -4,12 +4,15 @@
  */
 package ml;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -194,6 +197,28 @@ class PrettyPrinter {
 			}
 		}
 	}
+
+    static void printRaw( LN node, PrintStream s, boolean root) {
+        if( node.data.isTip ) {
+			s.printf("%s:%G", node.data.getTipName(), node.backLen);
+		} else {
+			s.print("(");
+			printRaw(node.next.back, s ,false);
+			s.print(",");
+            printRaw(node.next.next.back, s ,false);
+
+			if( root ) {
+                s.print(",");
+				printRaw( node.back, s ,false);
+                s.printf(");" );
+			} else {
+                s.printf("):%G", node.backLen );
+            }
+		}
+    }
+    static void printRaw( LN node, PrintStream s ) {
+        printRaw( node, s, true );
+    }
 }
 
 class ANode {
@@ -218,6 +243,7 @@ class LN {
 	LN next;
 	LN back;
 	double backLen;
+
 
 	public LN( ANode data ) {
 		this.data = data;
@@ -286,15 +312,21 @@ class TreeParser2 {
 	}
 
 	void skipWhitespace() {
-		while (Character.isSpaceChar(inputA[ptr])) {
+		while ( ptr < inputA.length && Character.isSpaceChar(inputA[ptr])) {
 			ptr++;
 		}
 	}
 
 	public LN parse() {
-		skipWhitespace();
+		nLeafs = 0;
+        nInnerNodes = 0;
 
+        skipWhitespace();
 
+        if( ptr >= inputA.length ) {
+            // seems like we hit the end of the file
+            return null;
+        }
 		// expect at least one node
 		LN node = parseNode();
 
@@ -384,8 +416,8 @@ class TreeParser2 {
 
 			LN n = LN.create();
 
-			twiddle( nl, n.next );
-			twiddle( nr, n.next.next );
+			twiddle( nl, n.next, l1 );
+			twiddle( nr, n.next.next, l2 );
 
 
 			return n;
@@ -407,9 +439,9 @@ class TreeParser2 {
 
 			LN n = LN.create();
 
-			twiddle( nl, n.next );
-			twiddle( nr, n.next.next );
-			twiddle( nx, n );
+			twiddle( nl, n.next, l1 );
+			twiddle( nr, n.next.next, l2 );
+			twiddle( nx, n, l3 );
 
 			return n;
 		} else {
@@ -419,7 +451,7 @@ class TreeParser2 {
 
 		
 	}
-	private static void twiddle( LN n1, LN n2 ) {
+	private static void twiddle( LN n1, LN n2, double branchLen ) {
 		if( n1.back != null ) {
 			throw new RuntimeException( "n1.back != null" );
 		}
@@ -431,7 +463,13 @@ class TreeParser2 {
 		n1.back = n2;
 		n2.back = n1;
 
+        n1.backLen = branchLen;
+        n2.backLen = branchLen;
+
+
 	}
+
+
 	private LN parseLeaf() {
 
 
@@ -476,197 +514,7 @@ class TreeParser2 {
 }
 
 
-//class TreeParser {
-//
-//	String input;
-//
-//	// input as char array
-//	char[] inputA;
-//
-//	// pointer to next char in input string
-//	int ptr = 0;
-//
-//	public TreeParser(String input) {
-//		this.input = input;
-//		this.inputA = input.toCharArray();
-//		ptr = 0;
-//	}
-//
-//	public TreeParser(File f) {
-//		this.input = readFile(f);
-//		this.inputA = input.toCharArray();
-//		ptr = 0;
-//	}
-//
-//	static String readFile(File f) {
-//		try {
-//			BufferedReader r = new BufferedReader(new FileReader(f));
-//			return r.readLine();
-//		} catch (FileNotFoundException ex) {
-//			Logger.getLogger(TreeParser.class.getName()).log(Level.SEVERE, null, ex);
-//			return null;
-//		} catch (IOException ex) {
-//			Logger.getLogger(TreeParser.class.getName()).log(Level.SEVERE, null, ex);
-//			return null;
-//		}
-//	}
-//
-//	public void printLocation() {
-//		int pos1 = Math.max(0, ptr - 40);
-//		int pos2 = Math.min(input.length(), ptr + 40);
-//
-//		System.out.println(input.substring(pos1, pos2));
-//
-//		for (int i = pos1; i < ptr; i++) {
-//			System.out.print(" ");
-//		}
-//		System.out.println("^");
-//	}
-//
-//	void skipWhitespace() {
-//		while (Character.isSpaceChar(inputA[ptr])) {
-//			ptr++;
-//		}
-//	}
-//
-//	public Node parse() {
-//		skipWhitespace();
-//
-//
-//		// expect at least one node
-//		Node node = parseNode();
-//
-//		// expect terminating ';'
-//		if (ptr >= inputA.length) {
-//			throw new RuntimeException("parse error. parse: end of input. missing ';'");
-//		}
-//
-//		if (inputA[ptr] != ';') {
-//			throw new RuntimeException("parse error. parse expects ';'");
-//		}
-//
-//		return node;
-//	}
-//
-//	private Node parseNode() {
-//		skipWhitespace();
-//
-//		// lookahead: determine node type
-//		if (inputA[ptr] == '(') {
-//			return parseInnerNode();
-//		} else {
-//			return parseLeaf();
-//		}
-//	}
-//
-//	private double parseBranchLength() {
-//		skipWhitespace();
-//
-//		// expect + consume ':'
-//		if (inputA[ptr] != ':') {
-//			throw new RuntimeException("parse error: parseBranchLength expects ':' at " + ptr);
-//		}
-//
-//		ptr++;
-//
-//		skipWhitespace();
-//
-//		int lend = findFloat(ptr);
-//		if (lend == ptr) {
-//			throw new RuntimeException("missing float number at " + ptr);
-//		}
-//
-//		double l = Double.parseDouble(input.substring(ptr, lend));
-//		ptr = lend;
-//
-//		return l;
-//	}
-//
-//	private Node parseInnerNode() {
-//		skipWhitespace();
-//
-//
-//		// expect + consume '('
-//		if (inputA[ptr] != '(') {
-//			throw new RuntimeException("parse error: parseInnerNode expects '(' at " + ptr);
-//		}
-//		ptr++;
-//
-//		// parse left node + branch length
-//		Node nl = parseNode();
-//		double l1 = parseBranchLength();
-//
-//		skipWhitespace();
-//
-//
-//		// expect + consume ','
-//		if (inputA[ptr] != ',') {
-//			printLocation();
-//			throw new RuntimeException("parse error: parseInnerNode expects ',' at " + ptr);
-//		}
-//		ptr++;
-//
-//
-//		// parse right node + branch length
-//		Node nr = parseNode();
-//		double l2 = parseBranchLength();
-//
-//		skipWhitespace();
-//
-//
-//		// expect + consume ')'
-//		if (inputA[ptr] != ')') {
-//			printLocation();
-//			throw new RuntimeException("parse error: parseInnerNode expects ')' at " + ptr);
-//		}
-//
-//		ptr++;
-//
-//		Node n = new Node(10);
-//		n.add(nl, nr);
-//
-//		return n;
-//	}
-//
-//	private Node parseLeaf() {
-//
-//
-//		skipWhitespace();
-//
-//		// a leaf consists just of a data string. use the ':' as terminator for now (this is not correct, as there doesn't have to be a branch length (parsr will crash on tree with only one leaf...));
-//		int end = findNext(ptr, ':');
-//		String ld = input.substring(ptr, end);
-//
-//		ptr = end;
-//
-//
-//		System.out.printf("leaf: %s\n", ld);
-//		Node n = new Node(10);
-//		n.data = ld;
-//		n.isLeaf = true; // fake
-//		return n;
-//	}
-//
-//	private int findNext(int pos, char c) {
-//		while (inputA[pos] != c) {
-//			pos++;
-//		}
-//
-//		return pos;
-//	}
-//
-//	private boolean isFloatChar(char c) {
-//		return Character.isDigit(c) || c == '.' || c == 'e' || c == 'E' || c == '-';
-//	}
-//
-//	private int findFloat(int pos) {
-//		while (isFloatChar(inputA[pos])) {
-//			pos++;
-//		}
-//
-//		return pos;
-//	}
-//}
+
 
 /**
  *
@@ -728,10 +576,24 @@ public class Main {
 	private static void testParser() {
 		//TreeParser tp = new TreeParser(test);
 		//TreeParser tp = new TreeParser(new File("/space/src/ml/benchmark/real_data_trees/GTR_ESTIMATED/101_SC_TREE"));
-		TreeParser2 tp = new TreeParser2(new File("/space_tmp/raxml/VINCENT/354.WITH.boot.tre.phy"));
-	//	TreeParser2 tp = new TreeParser2("(a:1.0,b:1.0,(e:1.0,f:1.0):1.0);");
-		LN n = tp.parse();
-		PrettyPrinter.print(n, true);
+		TreeParser2 tp = new TreeParser2(new File("/space/raxml/VINCENT/354.WITH.boot.tre.phy"));
+	//	TreeParser2 tp = new TreeParser2("(a:1.0,b:2.0,(e:3.0,f:4.0):5.0);");
+		
+		//PrettyPrinter.print(n, true);
+        try {
+            PrintStream ps = new PrintStream(new BufferedOutputStream(new FileOutputStream("/tmp/tree.txt")));
+            LN n;// = tp.parse();
+            while( ( n = tp.parse()) != null ) {
+                PrettyPrinter.printRaw(n, ps );
+            }
+
+            ps.close();
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }
+       
+        System.out.println();
+        
 		System.out.printf( "num leafs: %d\n", tp.nLeafs );
 		System.out.printf( "num inner nodes: %d\n", tp.nInnerNodes );
 	}
