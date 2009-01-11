@@ -1,6 +1,8 @@
 package ml;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -241,6 +243,14 @@ public class TreeParser {
 
 
 	}
+
+	/**
+	 * create an edge (=double link) between the two nodes and set branch length
+	 * 
+	 * @param n1
+	 * @param n2
+	 * @param branchLen
+	 */
 	private static void twiddle( LN n1, LN n2, double branchLen ) {
 		if( n1.back != null ) {
 			throw new RuntimeException( "n1.back != null" );
@@ -307,4 +317,6 @@ public class TreeParser {
 
 		return pos;
 	}
+
+
 }

@@ -20,21 +20,20 @@ import java.util.logging.Logger;
  */
 public class FindMinSupport {
 
-    public static void main( String[] args ) {
-        File f = new File( "/space/raxml/VINCENT/RAxML_bipartitions.125.BEST.WITH" );
-
-        TreeParser tp = new TreeParser(f);
-
-
-        LN n = tp.parse();
-
-        LN[] nodelist = getAsList(n);
+	public static LN getNThReducedTree( LN n, int num ) {
+		LN[] nodelist = getAsList(n);
 
         System.out.printf( "nodes: %d\n", nodelist.length );
 
         int nTT = 0;
+		int i = 0;
+
         for( LN node : nodelist ) {
             int nt = numTips(node);
+
+			if( node.data.getSupport() < 100.0 ) {
+				continue;
+			}
 
             if( nt == 2 ) {
                 nTT++;
@@ -48,15 +47,20 @@ public class FindMinSupport {
                 LN tnt = getTowardsNonTip(node);
 
                 int c = 2;
-                if( c == 1 ) {
+                if( i == num ) {
                     tnt.back.back = tnt.next.back;
                     tnt.next.back.back = tnt.back;
-                } else if( c == 2 ) {
+
+					return n;
+                } 
+				i++;
+				if( i == num ) {
                     tnt.back.back = tnt.next.next.back;
                     tnt.next.next.back.back = tnt.back;
+					return n;
                 }
-                break;
-            }
+				i++;
+			}
 //            else if( nt == 1 ) {
 //                String[] tn = getTipNames(node);
 //
@@ -65,22 +69,59 @@ public class FindMinSupport {
 //                System.out.printf( "%s %f (%s): %d\n", node.data, node.data.getSupport(), tn[0], nt);
 //            }
 
-            
+
 
         }
 
-        
-        try {
-            PrintStream ps = new PrintStream(new BufferedOutputStream(new FileOutputStream("/tmp/smalltree")));
-            TreePrinter.printRaw(n, ps);
-            ps.close();
-        } catch (FileNotFoundException ex) {
-            Logger.getLogger(FindMinSupport.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        
+		return null;
+	}
 
-        System.out.printf( "nTT: %d\n", nTT );
+    public static void main( String[] args ) {
+		String[] inlist = {"RAxML_bipartitions.125.BEST.WITH", "RAxML_bipartitions.1908.BEST.WITH", "RAxML_bipartitions.354.BEST.WITH", "RAxML_bipartitions.59.BEST.WITH", "RAxML_bipartitions.855.BEST.WITH",
+			"RAxML_bipartitions.140.BEST.WITH", "RAxML_bipartitions.2000.BEST.WITH", "RAxML_bipartitions.404.BEST.WITH", "RAxML_bipartitions.628.BEST.WITH", "RAxML_bipartitions.8.BEST.WITH",
+			"RAxML_bipartitions.150.BEST.WITH", "RAxML_bipartitions.217.BEST.WITH", "RAxML_bipartitions.500.BEST.WITH", "RAxML_bipartitions.714.BEST.WITH",
+			"RAxML_bipartitions.1604.BEST.WITH", "RAxML_bipartitions.218.BEST.WITH", "RAxML_bipartitions.53.BEST.WITH", "RAxML_bipartitions.81.BEST.WITH"};
+
+
+		for( String filename : inlist ) {
+			createReducedTrees(filename);
+		}
+
+	}
+
+	public static void createReducedTrees( String filename ) {
+		File basedir = new File( "/space_tmp/raxml/VINCENT/" );
+		
+		File outdir = new File( "/space/redtree" );
+
+		for( int i = 0;; i++ ) {
+			File f = new File( basedir, filename );
+
+			TreeParser tp = new TreeParser(f);
+
+
+			LN n = tp.parse();
+
+			n = getNThReducedTree(n, i);
+			if( n == null ) {
+				System.out.printf( "finished after %d trees\n", i );
+				break;
+			}
+
+
+			try {
+				File outfile = new File( outdir, filename + "_" + padchar( "" + i, '0', 4 ) );
+
+				PrintStream ps = new PrintStream(new BufferedOutputStream(new FileOutputStream(outfile)));
+				TreePrinter.printRaw(n, ps);
+				ps.close();
+			} catch (FileNotFoundException ex) {
+				Logger.getLogger(FindMinSupport.class.getName()).log(Level.SEVERE, null, ex);
+			}
+        
+        
+		}
+        //System.out.printf( "nTT: %d\n", nTT );
     }
 
     private static int countNodes(LN n) {
@@ -177,4 +218,11 @@ public class FindMinSupport {
 
         return ra;
     }
+
+	private static String padchar(String string, char c, int num) {
+		while( string.length() < num ) {
+			string = c + string;
+		}
+		return string;
+	}
 }
