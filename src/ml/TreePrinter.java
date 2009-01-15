@@ -43,7 +43,8 @@ public class TreePrinter {
 
     static void printRaw( LN node, PrintStream s, boolean root) {
         if( node.data.isTip ) {
-			s.printf("%s:%G", node.data.getTipName(), node.backLen);
+			//s.printf("%s:%G", node.data.getTipName(), node.backLen);
+            s.printf("%s:%8.20f", node.data.getTipName(), node.backLen);
 		} else {
 			s.print("(");
 			printRaw(node.next.back, s ,false);
@@ -55,7 +56,8 @@ public class TreePrinter {
 				printRaw( node.back, s ,false);
                 s.printf(");" );
 			} else {
-                s.printf("):%G", node.backLen );
+                //s.printf("):%G", node.backLen );
+                s.printf("):%8.20f", node.backLen );
             }
 		}
     }
